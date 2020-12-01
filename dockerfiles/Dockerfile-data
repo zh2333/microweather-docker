@@ -1,0 +1,9 @@
+FROM java:8
+
+COPY *.jar /data-service.jar
+
+CMD ["--server.port=8083"]
+
+EXPOSE 8083
+
+ENTRYPOINT ["java", "-jar", "/data-service.jar"]

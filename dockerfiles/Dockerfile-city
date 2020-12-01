@@ -1,0 +1,9 @@
+FROM java:8
+
+COPY *.jar /city-service.jar
+
+CMD ["--server.port=8082"]
+
+EXPOSE 8082
+
+ENTRYPOINT ["java", "-jar", "/city-service.jar"]

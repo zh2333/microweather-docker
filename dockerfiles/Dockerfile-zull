@@ -1,0 +1,9 @@
+FROM java:8
+
+COPY *.jar /zuul-service.jar
+
+CMD ["--server.port=8085"]
+
+EXPOSE 8085
+
+ENTRYPOINT ["java", "-jar", "/zuul-service.jar"]

@@ -1,0 +1,9 @@
+FROM java:8
+
+COPY *.jar /report-service.jar
+
+CMD ["--server.port=80"]
+
+EXPOSE 80
+
+ENTRYPOINT ["java", "-jar", "/report-service.jar"]

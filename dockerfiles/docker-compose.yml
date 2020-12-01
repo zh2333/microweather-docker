@@ -1,0 +1,102 @@
+version: "3.8"
+
+services:
+  eureka-service:
+    image: eureka-server
+    build:
+      context: ./eureka-service
+      dockerfile: Dockerfile
+    ports:
+    - "8761:8761"
+    networks:
+    - weather-network
+    depends_on:
+      - redis
+    deploy:
+      mode: replicated
+      replicas: 2
+  zuul-service:
+    image: weather-zuul
+    build:
+      context: ./zuul-service
+      dockerfile: Dockerfile
+    ports:
+    - "8085:8085"
+    networks:
+      - weather-network
+    depends_on:
+      - eureka-service
+    deploy:
+      mode: replicated
+      replicas: 2
+  city-service:
+    image: weather-city
+    build:
+      context: ./city-service
+      dockerfile: Dockerfile
+    ports:
+    - "8082:8082"
+    networks:
+      - weather-network
+    depends_on:
+      - zuul-service
+    deploy:
+      mode: replicated
+      replicas: 3
+  data-service:
+    image: weather-data
+    build:
+      context: ./data-service
+      dockerfile: Dockerfile
+    ports:
+    - "8083:8083"
+    networks:
+      - weather-network
+    depends_on:
+      - collection-service
+    deploy:
+      mode: replicated
+      replicas: 2
+  redis:
+    image: "library/redis:alpine"
+    networks:
+      - weather-network
+    deploy:
+      mode: replicated
+      replicas: 2
+  collection-service:
+    image: weather-collection
+    build:
+      context: ./collection-service
+      dockerfile: Dockerfile
+    ports:
+    - "8084:8084"
+    networks:
+      - weather-network
+    depends_on:
+      - city-service
+    deploy:
+      mode: replicated
+      replicas: 2
+  report-service:
+    image: weather-report
+    build:
+      context: ./report-service
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    networks:
+      - weather-network
+    depends_on:
+      - data-service
+    deploy:
+      mode: replicated
+      replicas: 2
+networks:
+  weather-network:
+
+
+
+
+
+
