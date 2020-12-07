@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.waylau.spring.cloud.weather.vo.Forecast;
+import com.waylau.spring.cloud.weather.vo.HourWeather;
+import com.waylau.spring.cloud.weather.vo.SimpleForecast;
+import com.waylau.spring.cloud.weather.vo.SimpleWeather;
 import com.waylau.spring.cloud.weather.vo.Weather;
 import com.waylau.spring.cloud.weather.vo.WeatherResponse;
 
@@ -18,26 +21,30 @@ public class WeatherReportServiceImpl implements WeatherReportService {
 	
 	
 	@Override
-	public Weather getDataByCityId(String cityId) {
+	public WeatherResponse getDataByCityId(String cityId) {
 		WeatherResponse resp = dataClient.getDataByCityId(cityId);
-		
-		Weather data = null;
-		if(resp != null) {
-			data = resp.getData();
-		}
-		
-		return data;
+		return resp;
 	}
 
 
 	@Override
-	public Weather getDataByCityName(String cityName) {
-		WeatherResponse resp = dataClient.getDataByCityName(cityName);
-		Weather data = null;
-		if(resp != null) {
-			data = resp.getData();
-		}
-		return data;
+	public SimpleWeather getDataByCityName(String cityName) {
+		SimpleWeather resp = dataClient.getDataByCityName(cityName);
+		return resp;
+	}
+
+
+	@Override
+	public SimpleForecast getForecast(String cityName) {
+		SimpleForecast forecast = dataClient.getForecast(cityName);
+		return forecast;
+	}
+
+
+	@Override
+	public List<HourWeather> getHourWeather(String cityName) {
+		List<HourWeather> hourWeathers = dataClient.getHourForecast(cityName);
+		return hourWeathers;
 	}
 
 }

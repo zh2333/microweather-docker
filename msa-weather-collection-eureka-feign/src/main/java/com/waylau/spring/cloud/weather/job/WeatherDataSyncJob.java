@@ -39,21 +39,23 @@ public class WeatherDataSyncJob extends QuartzJobBean {
 		logger.info("weather Data Sync Job.Start!");
 		//获取城市ID列表
 		List<City> cityList = null;
-		
 		try {
-			
 			cityList = cityClient.listCity();
 		} catch (Exception e) {
 			logger.error("get cities error!", e);
 		}
-		//遍历城市ID列表获取天气
-		for(City city: cityList) {
-			String cityId = city.getCityId();
-			logger.info("sync weather data of:  **** " + cityId + " ****");
-			
-			weatherDataCollectionService.syncDataByCityId(cityId);
-		}
-		
+//		//遍历城市ID列表获取天气
+//		for(City city: cityList) {
+//			Integer cityId = city.getCityCode();
+//			String cityName = city.getCityName();
+//			logger.info("sync weather data of: " + cityName);
+//			
+//			
+//		}
+		Integer cityId = 101210101;//TODO 暂时只同步一个城市用于测试
+		String cityName = "杭州";
+		logger.info("sync weather data of: " + cityName);
+		weatherDataCollectionService.syncDataByCityId(cityId);
 		logger.info("weather Data Sync Job.End!");
 	}
 

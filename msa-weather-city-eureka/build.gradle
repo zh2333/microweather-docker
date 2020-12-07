@@ -58,6 +58,16 @@ dependencies {
 
 	// 该依赖用于测试阶段
 	testCompile('org.springframework.boot:spring-boot-starter-test')
+	
+		//redis
+	compile('org.springframework.boot:spring-boot-starter-data-redis')
+
+	//quartz
+	compile ('org.springframework.boot:spring-boot-starter-quartz')
+	
+	// fastJson依赖包
+	compile group: 'com.alibaba', name: 'fastjson', version: '1.2.75'
+	
 }
 
 dependencyManagement {

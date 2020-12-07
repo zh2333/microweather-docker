@@ -12,7 +12,7 @@ import org.quartz.TriggerBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.waylau.spring.cloud.weather.job.WeatherDataSyncJob;
+import com.waylau.spring.cloud.weather.job.CitySyncJob;
 
 /**
  * Quartz Configuration
@@ -21,19 +21,19 @@ import com.waylau.spring.cloud.weather.job.WeatherDataSyncJob;
  */
 @Configuration
 public class QuartzConfiguration {
-	private static final int TIME = 86400;//天气数据更新频率, 2分钟
+	private static final int TIME = 120;//城市数据映射工作频率
 	
 	//JobDetail  定义一个job
 	@Bean
-	public JobDetail weatherDataSyncJobDetail() {
-		return JobBuilder.newJob(WeatherDataSyncJob.class).withIdentity("weatherDataSyncJob").storeDurably().build(); 
+	public JobDetail CitySyncJobDetail() {
+		return JobBuilder.newJob(CitySyncJob.class).withIdentity("weatherDataSyncJob").storeDurably().build(); 
 	}
 	
 	//Trigger 定义脚本在什么状态下被触发
 	@Bean
 	public Trigger weatherDataSyncTrigger() {
 		ScheduleBuilder scheduleBuilder = SimpleScheduleBuilder.simpleSchedule().withIntervalInSeconds(TIME).repeatForever();
-		return TriggerBuilder.newTrigger().forJob(weatherDataSyncJobDetail()).withIdentity("weatherDataSyncTrigger").withSchedule(scheduleBuilder).build();
+		return TriggerBuilder.newTrigger().forJob(CitySyncJobDetail()).withIdentity("citySyncTrigger").withSchedule(scheduleBuilder).build();
 	}
 
 }

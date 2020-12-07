@@ -1,62 +1,47 @@
 package com.waylau.spring.cloud.weather.vo;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlAttribute;
-import javax.xml.bind.annotation.XmlRootElement;
-
 /**
- * 领域模型city
+ * 城市类
  * @author 张恒
  *
  */
-
 public class City {
-	
-	private String cityId;
-	
-	private String cityName;
-	
-	private String cityCode;
-	
-	private String province;
+    String cityName;
+    Integer cityCode;
 
-	public String getCityId() {
-		return cityId;
+    public City(Integer cityCode, String cityName) {
+        this.cityName = cityName;
+        this.cityCode = cityCode;
+    }
+    
+
+    public City() {
+		super();
 	}
 
-	public void setCityId(String cityId) {
-		this.cityId = cityId;
-	}
+
 
 	public String getCityName() {
-		return cityName;
-	}
+        return cityName;
+    }
 
-	public void setCityName(String cityName) {
-		this.cityName = cityName;
-	}
+    public void setCityName(String cityName) {
+        this.cityName = cityName;
+    }
 
-	public String getCityCode() {
-		return cityCode;
-	}
+    public Integer getCityCode() {
+        return cityCode;
+    }
 
-	public void setCityCode(String cityCode) {
-		this.cityCode = cityCode;
-	}
+    public void setCityCode(Integer cityCode) {
+        this.cityCode = cityCode;
+    }
 
-	public String getProvince() {
-		return province;
-	}
-
-	public void setProvince(String province) {
-		this.province = province;
-	}
-
-	@Override
-	public String toString() {
-		return "City [cityId=" + cityId + ", cityName=" + cityName + ", cityCode=" + cityCode + ", province=" + province
-				+ "]";
-	}	
-
+    @Override
+    public String toString() {
+        return "[" +
+                "cityName=" + cityName +
+                ", cityCode='" + cityCode + '\'' +
+                ']';
+    }
 }

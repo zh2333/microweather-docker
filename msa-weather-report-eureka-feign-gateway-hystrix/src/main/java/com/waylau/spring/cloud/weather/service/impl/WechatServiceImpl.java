@@ -3,15 +3,28 @@ package com.waylau.spring.cloud.weather.service.impl;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.waylau.spring.cloud.weather.service.DataClient;
 import com.waylau.spring.cloud.weather.service.WechatService;
 import com.waylau.spring.cloud.weather.vo.Forecast;
+import com.waylau.spring.cloud.weather.vo.HourWeather;
+import com.waylau.spring.cloud.weather.vo.SimpleDayWeather;
+import com.waylau.spring.cloud.weather.vo.SimpleForecast;
+import com.waylau.spring.cloud.weather.vo.SimpleWeather;
 import com.waylau.spring.cloud.weather.vo.Weather;
 
 @Service
 public class WechatServiceImpl implements WechatService {
+	private final static Logger logger = LoggerFactory.getLogger(WechatServiceImpl.class);
+	@Autowired
+	private DataClient dataClient;
+	
     @Override
     public boolean check(String signature, String token, String timestamp, String nonce) {
 
@@ -56,20 +69,12 @@ public class WechatServiceImpl implements WechatService {
      * 获取指定城市今天的天气概述
      */
 	@Override
-	public String getWeatherDesc(Weather weather) {
+	public String getWeatherDesc(SimpleWeather weather) {
 		String desc = "";
 		if (weather != null) {
-			Forecast today = weather.getForecast().get(0);
-			String city = weather.getCity();
-			String maxwendu = today.getHigh();
-			String lowwendu = today.getLow();
-			String fengx = today.getFengxiang();
-			String fengli = today.getFengli();
-			String ganmao = weather.getGanmao();
-			String type = today.getType();
-			desc = city + "今天"+ type +"天.最高温度 " + maxwendu + "度, " + "最低温度" + lowwendu + "度." + fengx + fengli + ".\n" + ganmao; 
+			desc = weather.toString();
 		} else {
-			desc = "暂无当前城市天气数据";
+			desc = "请检查输入的城市名称(不携带区)";
 		}
 		return desc;
 	}
@@ -81,10 +86,47 @@ public class WechatServiceImpl implements WechatService {
 	public String responseFocus(String event) {
 		String reply = "";
 		if (event.equals("subscribe")) {//如果是关注事件
-			reply = "欢迎关注zhtty的天气管家!更多功能敬请期待~";
+			reply = "欢迎关注zhtty的天气管家!\n" + "1.输入城市名称获取城市天气\n"
+					+ "2.输入 城市名称 +天气预报 获取未来一周的天气\n"
+					+ "3.输入 城市名称+小时预报 获取今天未来几小时的天气\n";
 		}
 		return reply;
 	}
+
+	@Override
+	public String getDayForecastDesc(SimpleForecast dayForecasts) {
+		StringBuilder desc = new StringBuilder();
+		logger.info(dayForecasts.toString());
+		if (dayForecasts != null) {
+			String cityName = dayForecasts.getCity();
+			List<SimpleDayWeather> weathers = dayForecasts.getData();
+			desc.append(cityName + "未来一周的天气:\n");
+			for (SimpleDayWeather dayWeather : weathers) {
+				desc.append(dayWeather.toString());
+			}
+		} else {
+			desc = desc.append("请检查输入的城市名称(不携带区)");
+		}
+		return desc.toString();
+	}
+
+	@Override
+	public String getHourForecastDesc(List<HourWeather> hourForecasts) {
+		StringBuilder desc = new StringBuilder();
+		if (hourForecasts != null) {
+			desc.append("接下来几小时的天气:\n");
+			for (HourWeather hourWeather : hourForecasts) {
+				desc.append(hourWeather);
+			}
+		} else {
+			desc = desc.append("请检查输入的城市名称(不携带区)");
+		}
+		return desc.toString();
+	}
+
+//	public void pushRegister(String user, String cityName) {
+//		dataClient.pushRegister(cityName, user);
+//	}
     
 }
 

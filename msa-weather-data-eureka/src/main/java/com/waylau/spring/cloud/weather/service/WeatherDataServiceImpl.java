@@ -3,11 +3,13 @@ package com.waylau.spring.cloud.weather.service;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.waylau.spring.cloud.weather.vo.DayWeather;
+import com.waylau.spring.cloud.weather.vo.Forecast;
+import com.waylau.spring.cloud.weather.vo.HourWeather;
+import com.waylau.spring.cloud.weather.vo.SimpleDayWeather;
+import com.waylau.spring.cloud.weather.vo.SimpleForecast;
+import com.waylau.spring.cloud.weather.vo.SimpleWeather;
+import com.waylau.spring.cloud.weather.vo.Weather;
 import com.waylau.spring.cloud.weather.vo.WeatherResponse;
 
 /**
@@ -22,91 +31,164 @@ import com.waylau.spring.cloud.weather.vo.WeatherResponse;
  */
 @Service
 public class WeatherDataServiceImpl implements WeatherDataService {
-	private static final String WEATHER_URI = "http://wthrcdn.etouch.cn/weather_mini?";
+	private static final String WEATHER_URI = "https://tianqiapi.com/api?version=v6&appid=81228233&appsecret=NR6c1gue&city=";
+	private static final String FORECAST_URI = "https://tianqiapi.com/api?version=v1&appid=81228233&appsecret=NR6c1gue&city=";
 	private static final long TIME_OUT = 1800L;
+	public static final String CITY = "citylist";
+	private static final String PPREFIX = "city:weather:";//城市当天天气key
+	private static final String FORECAST = "city:forecast:";//城市预报天气key
 	private final static Logger logger = LoggerFactory.getLogger(WeatherDataServiceImpl.class);
 
 	@Autowired
 	private RestTemplate restTemplate;
 	
 	@Autowired
-	private StringRedisTemplate stringRedisTemplate;
+	private RedisTemplate redisTemplate;
 	
 	@Override
-	public WeatherResponse getDataByCityId(String cityId) {
-		String uri = WEATHER_URI + "citykey=" + cityId;
-		return this.doGetWeahter(uri);
+	public SimpleWeather getDataByCityId(String cityCode) {
+		String cityName = (String) redisTemplate.opsForHash().get(CITY, cityCode);
+		return this.doGetWeahter(cityName);
 	}
 
 	@Override
-	public WeatherResponse getDataByCityName(String cityName) {
-		return this.doGetWeatherByCityName(cityName);
+	public SimpleWeather getDataByCityName(String cityName) {
+		return this.doGetWeahter(cityName);
 	}
 	
-	private WeatherResponse doGetWeahter(String uri) {
-		String key = uri;
-		WeatherResponse resp = null;
+	private SimpleWeather doGetWeahter(String cityName) {
+		String key = PPREFIX + cityName;
+		Weather oriWeather = null;
 		String strBody = null;
 		ObjectMapper mapper = new ObjectMapper();
-		ValueOperations<String, String> ops = stringRedisTemplate.opsForValue();
-		//增加逻辑, 如果redis中有, 就取redis中的数据
-		if(stringRedisTemplate.hasKey(key)) {
-			logger.info("redis has data" + key);
+		ValueOperations<String, String> ops = redisTemplate.opsForValue();
+		//1.从redis中取出当天原始天气信息
+		if(redisTemplate.hasKey(key)) {
+			logger.info("doGetWeahter:redis has weather of today" + key);
 			strBody = ops.get(key);
-		} else {
-			//如果redis中没有, 就抛出异常
-			logger.info("redis do not has data");
-			throw new RuntimeException("redis中没有该城市数据!");
-
+		} else {//如果没有该城市信息,则去请求uri
+			strBody = requestWithinRedis(cityName, WEATHER_URI, key);
 		}
 		try {
-			resp = mapper.readValue(strBody, WeatherResponse.class);
+			oriWeather = mapper.readValue(strBody, Weather.class);
+			return oriWeather.getSimpleWeather();
 		} catch (IOException e) {
-			logger.error("error!",e);
+			logger.error("strBody parse error , null or type error!",e);
 		}
-		return resp;
+		return null;
 	}
-	
+
+	@Override
+	public WeatherResponse getWeatherAndForecast(Integer cityCode) {
+		String cityName = (String) redisTemplate.opsForHash().get(CITY, cityCode);
+		String weatherKey = PPREFIX + cityName;
+		String forecastKey = FORECAST + cityName;
+		Weather oriWeather = null;
+		SimpleWeather simpleWeather = null;
+		SimpleForecast simpleyForecast = null;
+		String weatherBody = null;
+		String forecastBody = null;
+		Forecast forecast = null;
+		ObjectMapper mapper = new ObjectMapper();
+		ValueOperations<String, String> ops = redisTemplate.opsForValue();
+		try {
+			if (redisTemplate.hasKey(weatherKey) && redisTemplate.hasKey(forecastKey)) {
+				logger.info("redis has data" + weatherKey);
+				weatherBody = ops.get(weatherKey);
+				forecastBody = ops.get(forecastKey);
+			} else {
+				//如果redis中没有, 请求uri
+				weatherBody = requestWithinRedis(cityName, WEATHER_URI, weatherKey);
+				forecastBody = requestWithinRedis(cityName, FORECAST_URI, forecastKey);
+				logger.info("getWeatherAndForecast:redis do not has data:" + weatherKey + " and " + forecastKey + "requesting...");
+			}
+			oriWeather = mapper.readValue(weatherBody, Weather.class);
+			forecast = mapper.readValue(forecastBody, Forecast.class);
+			simpleWeather = oriWeather.getSimpleWeather();
+			simpleyForecast = forecast.getSimpleForecast();
+			WeatherResponse resp = new WeatherResponse(simpleWeather, simpleyForecast);
+			return resp;
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.info("getWeatherAndForecast: mapper readvalue error!");
+		}
+		return null;
+	}
+
+	@Override
+	public SimpleForecast getForecast(String cityName) {
+		String forecastKey = FORECAST + cityName;
+		SimpleForecast simpleyForecast = null;
+		Forecast forecast = null;
+		String forecastBody = null;
+		ObjectMapper mapper = new ObjectMapper();
+		ValueOperations<String, String> ops = redisTemplate.opsForValue();
+		try {
+			if (redisTemplate.hasKey(forecastKey)) {
+				forecastBody = ops.get(forecastKey);
+				//logger.info("getForecast: redis forecastBody" + forecastBody);
+			} else {
+				//如果redis中没有, 请求uri
+				logger.info("getForecast:redis do not has data, request uri:" + FORECAST_URI + cityName);
+				forecastBody = requestWithinRedis(cityName, FORECAST_URI, forecastKey);
+				//logger.info("getForecast: request forecastBody" + forecastBody);
+			}
+			forecast = mapper.readValue(forecastBody, Forecast.class);
+			simpleyForecast = forecast.getSimpleForecast();
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.info("getForecast: data service: mapper readvalue error!");
+		}
+		//logger.info("simpleForecast|" + simpleyForecast.toString());
+		return simpleyForecast;
+	}
+
+	@Override
+	public List<HourWeather> getHourForecast(String cityName) {
+		String forecastKey = FORECAST + cityName;
+		List<HourWeather> simpleyForecast = null;
+		Forecast forecast = null;
+		List<HourWeather> hours = null;
+		String forecastBody = null;
+		ObjectMapper mapper = new ObjectMapper();
+		ValueOperations<String, String> ops = redisTemplate.opsForValue();
+		try {
+			if (redisTemplate.hasKey(forecastKey)) {
+				forecastBody = ops.get(forecastKey);
+			} else {
+				//如果redis中没有, 请求uri
+				forecastBody = requestWithinRedis(cityName, FORECAST_URI, forecastKey);
+				logger.info("getHourForecast:redis do not has data, request uri:" + FORECAST_URI + cityName);
+			}
+			forecast = mapper.readValue(forecastBody, Forecast.class);
+			hours = forecast.getData().get(0).getHours();
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.info("data service getHourForecast: mapper readvalue error!");
+		}
+		return hours;
+	}
 	/**
-	 * 通过城市名称获取城市天气
-	 * @param cityName
+	 * 在redis中没有数据的情况下, 去请求uri解析, 并将请求结果写入到redis中
+	 * @param cityName 城市名称
+	 * @param uriPrefix 请求前缀
 	 * @return
 	 */
-	private WeatherResponse doGetWeatherByCityName(String cityName) {
-		String uri = WEATHER_URI + "city=" + cityName;
-		Date date = new Date();
-		DateFormat currDate = DateFormat.getDateInstance();
-		String key = currDate + ":" + cityName;
+	private String requestWithinRedis(String cityName, String uriPrefix, String key) {
 		String strBody = null;
-		WeatherResponse resp = null;
-		ObjectMapper mapper = new ObjectMapper();
-		ValueOperations<String, String> ops = stringRedisTemplate.opsForValue();
-		
-		//先去本地redis中取, 如果没有就直接请求uri
-		//1.去redis中取
-		if(stringRedisTemplate.hasKey(key)) {
-			logger.info("redis has data" + key);
-			strBody = ops.get(key);
+		String tmpUri = uriPrefix + cityName;
+		ValueOperations<String, String> ops = redisTemplate.opsForValue();
+		ResponseEntity<String> respString = restTemplate.getForEntity(tmpUri, String.class);
+		logger.info("requestWithinRedis: do not has weather of "+ cityName +" today , request uri:" + tmpUri);
+		if (respString.getStatusCodeValue() == 200) {
+			strBody = respString.getBody();
+			//数据写入缓存
+			ops.set(key, strBody, TIME_OUT,TimeUnit.SECONDS);
 		} else {
-			//2.redis中没有请求uri
-			ResponseEntity<String> respString = restTemplate.getForEntity(uri, String.class);
-			if (respString.getStatusCodeValue() == 200) {
-				strBody = respString.getBody();
-				//3.将请求到的数据存入redis中, 提高别人查询的命中率
-				ops.set(key, strBody, TIME_OUT,TimeUnit.SECONDS);
-			} else {
-				strBody = "";
-				logger.info("redis not has data:" + key +" request fail");
-				throw new RuntimeException("redis not has data:" + key +" request fail");
-			}
+			logger.info("data service: redis do not has data of " + key + "and request fail:" + uriPrefix + cityName);
 		}
-		try {
-			resp = mapper.readValue(strBody, WeatherResponse.class);
-		} catch (IOException e) {
-			logger.error("redis data convert error!",e);
-		}
-		
-		return resp;
+		logger.info("strBody:" + strBody);
+		return strBody;
 	}
-
 }

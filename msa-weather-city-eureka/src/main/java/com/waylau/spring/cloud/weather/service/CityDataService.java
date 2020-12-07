@@ -20,5 +20,11 @@ public interface CityDataService {
 	 * @throws Exception
 	 */
 	List<City> listCity() throws Exception;
+	
+	/**
+	 * 同步城市代码和城市名称的映射到redis
+	 * @param cityList
+	 */
+	void saveCityMap(List<City> cityList);
 
 }

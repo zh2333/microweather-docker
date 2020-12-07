@@ -3,34 +3,33 @@ package com.waylau.spring.cloud.weather.vo;
 import java.io.Serializable;
 
 /**
- * Weather Response.
- * 
- * @since 1.0.0 2017年11月21日
- * @author <a href="https://waylau.com">Way Lau</a> 
+ * 响应页面的请求
  */
 public class WeatherResponse implements Serializable {
 
 	private static final long serialVersionUID = 1L;
-	private Weather data;
-	private Integer status;
-	private String desc;
-	public Weather getData() {
+	private SimpleWeather data;//当天天气
+	private SimpleForecast forecast;//每日天气预报
+	
+	
+	public WeatherResponse() {
+		super();
+	}
+	public WeatherResponse(SimpleWeather data, SimpleForecast forecast) {
+		super();
+		this.data = data;
+		this.forecast = forecast;
+	}
+	public SimpleWeather getData() {
 		return data;
 	}
-	public void setData(Weather data) {
+	public void setData(SimpleWeather data) {
 		this.data = data;
 	}
-	public Integer getStatus() {
-		return status;
+	public SimpleForecast getForecast() {
+		return forecast;
 	}
-	public void setStatus(Integer status) {
-		this.status = status;
+	public void setForecast(SimpleForecast forecast) {
+		this.forecast = forecast;
 	}
-	public String getDesc() {
-		return desc;
-	}
-	public void setDesc(String desc) {
-		this.desc = desc;
-	}
-	
 }

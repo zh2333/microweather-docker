@@ -3,19 +3,20 @@
  */
 package com.waylau.spring.cloud.weather.service;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import com.waylau.spring.cloud.weather.util.XmlBuilder;
+import com.waylau.spring.cloud.constparamter.Const;
+import com.waylau.spring.cloud.weather.util.JsonBuilder;
 import com.waylau.spring.cloud.weather.vo.City;
-import com.waylau.spring.cloud.weather.vo.CityList;
 
 /**
  * @author 张恒
@@ -24,23 +25,28 @@ import com.waylau.spring.cloud.weather.vo.CityList;
 @Service
 public class CityDataServiceImpl implements CityDataService {
 	private final static Logger logger = LoggerFactory.getLogger(CityDataServiceImpl.class);
+	
+	@Autowired
+	private RedisTemplate redisTemplate;
+	
 	@Override
 	public List<City> listCity() throws Exception {
-		logger.info("parse xml..........");
-		//读取xml文件
-		Resource resource = new ClassPathResource("citylist.xml");
-		BufferedReader bf = new BufferedReader(new InputStreamReader(resource.getInputStream(), "utf-8"));
-		StringBuffer buffer = new StringBuffer();
-		String line = "";
-		while((line = bf.readLine()) != null) {
-			buffer.append(line);
-		}
-		if(bf != null) {
-			bf.close();
-		}
+		logger.info("parse json..........");
 		//将xml转为java对象
-		CityList cityList = (CityList)XmlBuilder.xmlStrToObject(CityList.class, buffer.toString());
-		return cityList.getCityList();
+		List<City> cityList = (List<City>) JsonBuilder.parseJsonToList(City.class, "citylist.json");
+		return cityList;
+	}
+	
+	/**
+	 * 将城市和城市名称存入redis
+	 */
+	public void saveCityMap(List<City> cityList) {
+		Map<String, String> cityMap = new HashMap();//城市名称和城市代码的映射
+		
+		for (City city:cityList) {
+			cityMap.put(String.valueOf(city.getCityCode()), city.getCityName());
+		}
+		redisTemplate.opsForHash().putAll(Const.CITY, cityMap);
 	}
 
 }
